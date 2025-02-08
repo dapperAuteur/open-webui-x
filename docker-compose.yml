@@ -1,0 +1,42 @@
+# docker-compose up --build --pull always
+
+services:
+  ollama:
+    image: ollama/ollama
+    network_mode: "host"
+    ports:
+      - 11434:11434
+    restart: on-failure
+    volumes:
+      - /Users/bam/.ollama/models:/root/.ollama/models  # Mount local models directory
+
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    network_mode: "host"
+    environment:
+      - OLLAMA_BASE_URL=http://127.0.0.1:11434
+      - PORT=9090
+      - DATABASE_URL=postgresql://dbuser:dbpassword@db:5432/openwebui  # Add database connection string
+    volumes:
+      - open-webui:/app/backend/data
+    ports:
+      - 9090:9090
+    restart: always
+    depends_on:
+      - db  # Ensure the database starts first
+
+  db:
+    image: postgres:14  # Use the official PostgreSQL image
+    environment:
+      POSTGRES_USER: dbuser
+      POSTGRES_PASSWORD: dbpassword
+      POSTGRES_DB: openwebui
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432  # Expose the PostgreSQL database
+
+volumes:
+  open-webui:
+  db_data:  # Persistent volume for database data
