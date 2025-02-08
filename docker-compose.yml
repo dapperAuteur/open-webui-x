@@ -1,3 +1,4 @@
+# version: '1.3'
 # docker-compose up --build --pull always
 
 services:
@@ -17,12 +18,38 @@ services:
     environment:
       - OLLAMA_BASE_URL=http://127.0.0.1:11434
       - PORT=9090
-      - WEAVIATE_HOST=http://localhost:8080  # Weaviate host address
+      # - WEAVIATE_URL=http://weaviate:8080  # Weaviate host address
+      - WEAVIATE_HOST=weaviate # Use the service name instead of localhost if they are not on the same network
+    depends_on:
+      - weaviate
     volumes:
-      - open-webui:/app/backend/data
+      - open-webui-data:/app/backend/data # Mount a volume for persistent data
     ports:
       - 9090:9090
     restart: always
 
+  weaviate:
+    image: semitechnologies/weaviate:latest
+    environment:
+      - QUERY_DEFAULTS_LIMIT=25
+      - AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=true # Only for local testing!  Remove for production.
+      - PERSISTENCE_DATA_PATH=/var/lib/weaviate
+      - DEFAULT_VECTORIZER_MODULE=text2vec-huggingface
+      - ENABLE_MODULES=text2vec-huggingface
+    volumes:
+      - weaviate-data:/var/lib/weaviate
+    restart: unless-stopped # Restart unless explicitly stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/.well-known/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "8080:8080"  # Expose Weaviate on port 8080
+    # networks:
+      - "8081:8081" # Expose the Weaviate GraphQL port as well.
+    #   - local-net
+
 volumes:
-  open-webui:
+  open-webui-data: # Define a volume for the Open Web UI
+  weaviate-data: # Define a volume for Weaviate data
